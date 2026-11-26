@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZU Corporate — Корпоративтік жүйе архитектурасы (Зертханалық жұмыс №13)</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- STRICT AUTHENTICATION GATE (Тіркелу -> Кіру) -->
+  <section id="authGate" class="auth-gate">
+    <div class="auth-shell">
+      <div class="auth-info">
+        <div class="brand-badge">
+          <span class="brand-monogram">ZU</span>
+          <div>
+            <strong>ZU Corporate IS</strong>
+            <small>Зертханалық жұмыс №13</small>
+          </div>
+        </div>
+
+        <h1>Корпоративтік жүйе архитектурасы</h1>
+        <p class="auth-lead">
+          Жетісу университетінің көпқабатты корпоративтік ақпараттық жүйесі. Барлық модульдер, деректер базасы және аналитикалық есептер Supabase бұлттық PostgreSQL платформасымен тікелей біріктірілген.
+        </p>
+
+        <div class="strict-flow-card">
+          <div class="flow-step">
+            <span class="step-num">1</span>
+            <div>
+              <strong>Алдымен тіркелу</strong>
+              <p>Жаңа пайдаланушы деректері және PBKDF2-HMAC-SHA256 (100 000 итерация) хэштелген құпия сөз Supabase базасына сақталады.</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">2</span>
+            <div>
+              <strong>Содан кейін ғана кіру</strong>
+              <p>Жүйеге тек Supabase базасында тіркелген логин мен құпия сөз арқылы HMAC-SHA256 сессия токенімен кіруге болады.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="authHealthPill" class="health-pill checking">
+          <span class="status-dot"></span>
+          <span id="authHealthText">Supabase бұлттық базасы тексерілуде...</span>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist">
+          <button type="button" id="tabRegisterBtn" class="auth-tab active" data-auth-tab="register">Тіркелу</button>
+          <button type="button" id="tabLoginBtn" class="auth-tab" data-auth-tab="login">Кіру</button>
+        </div>
+
+        <div id="authNotice" class="alert hidden" role="alert"></div>
+
+        <!-- REGISTER FORM -->
+        <form id="registerForm" class="auth-form">
+          <div class="form-row-2">
+            <div class="field">
+              <label for="regFirstName">Аты</label>
+              <input id="regFirstName" type="text" required minlength="2" placeholder="Мысалы: Заңғар" autocomplete="given-name" />
+            </div>
+            <div class="field">
+              <label for="regLastName">Тегі</label>
+              <input id="regLastName" type="text" required minlength="2" placeholder="Мысалы: Ерғали" autocomplete="family-name" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="regLogin">Логин немесе Email</label>
+            <input id="regLogin" type="text" required minlength="3" placeholder="zangar.ergali" autocomplete="username" />
+            <small class="field-hint">Латын әріптері, цифрлар, ., _, @, - рұқсат етіледі</small>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field">
+              <label for="regRole">Жүйедегі рөлі</label>
+              <select id="regRole" required>
+                <option value="student">Студент (student)</option>
+                <option value="teacher">Оқытушы (teacher)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="regGroup">Тобы / Кафедра</label>
+              <input id="regGroup" type="text" placeholder="ИС-302" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="regPassword">Құпия сөз</label>
+            <input id="regPassword" type="password" required minlength="6" placeholder="Кемінде 6 таңба" autocomplete="new-password" />
+            <div class="strength-bar-wrap">
+              <div class="strength-track"><div id="strengthFill" class="strength-fill"></div></div>
+              <span id="strengthLabel" class="strength-label">Энтропия: 0 бит</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="regPasswordConfirm">Құпия сөзді қайталаңыз</label>
+            <input id="regPasswordConfirm" type="password" required minlength="6" placeholder="Құпия сөзді растаңыз" autocomplete="new-password" />
+          </div>
+
+          <button type="submit" id="registerSubmitBtn" class="btn btn-primary btn-full">
+            Тіркелу және Supabase-ке сақтау
+          </button>
+          <p class="form-switch-hint">
+            Бұрын тіркелгенсіз бе?
+            <button type="button" class="link-btn" data-switch-auth="login">«Кіру» бөліміне өту</button>
+          </p>
+        </form>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm" class="auth-form hidden">
+          <div class="field">
+            <label for="loginUsername">Тіркелген логин немесе Email</label>
+            <input id="loginUsername" type="text" required placeholder="Тіркелу кезінде көрсетілген логин" autocomplete="username" />
+          </div>
+
+          <div class="field">
+            <label for="loginPassword">Құпия сөз</label>
+            <input id="loginPassword" type="password" required placeholder="Құпия сөзіңізді енгізіңіз" autocomplete="current-password" />
+          </div>
+
+          <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-full">
+            Жүйеге кіру
+          </button>
+          <p class="form-switch-hint">
+            Аккаунтыңыз жоқ па?
+            <button type="button" class="link-btn" data-switch-auth="register">Алдымен тіркеліңіз</button>
+          </p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUTHENTICATED CORPORATE WORKSPACE -->
+  <div id="appShell" class="app-shell hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand-badge compact">
+          <span class="brand-monogram">ZU</span>
+          <div>
+            <strong>ZU Corporate</strong>
+            <small>АЖЖ • Зертханалық жұмыс №13</small>
+          </div>
+        </div>
+
+        <div id="topSupabaseBadge" class="cloud-badge online">
+          <span class="status-dot"></span>
+          <span id="topSupabaseText">Supabase Cloud</span>
+        </div>
+      </div>
+
+      <nav class="main-nav" aria-label="Негізгі бөлімдер">
+        <button type="button" class="nav-btn active" data-tab="overview">Шолу (5-тапс.)</button>
+        <button type="button" class="nav-btn" data-tab="layers">Қабаттар (1-тапс.)</button>
+        <button type="button" class="nav-btn" data-tab="modules">Модульдер (2-тапс.)</button>
+        <button type="button" class="nav-btn" data-tab="diagram">Байланыстар (3-тапс.)</button>
+        <button type="button" class="nav-btn" data-tab="workspace">Деректер &amp; CRUD</button>
+        <button type="button" class="nav-btn" data-tab="analytics">Есеп &amp; Қауіпсіздік</button>
+        <button type="button" class="nav-btn" data-tab="analysis">Талдау (4-тапс.)</button>
+      </nav>
+
+      <div class="topbar-right">
+        <div class="user-pill">
+          <span id="userAvatar" class="user-avatar">ЗЕ</span>
+          <div class="user-meta">
+            <strong id="userFullName">Пайдаланушы</strong>
+            <small id="userRoleGroup">Рөлі • Тобы</small>
+          </div>
+        </div>
+        <button type="button" id="logoutBtn" class="btn btn-outline btn-sm">Шығу</button>
+      </div>
+    </header>
+
+    <main class="main-container">
+      <!-- TAB 1: OVERVIEW (Task 5) -->
+      <section id="tab-overview" class="tab-panel active">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">5-тапсырма • Практикалық жобалау</span>
+            <h2>Университетті басқарудың корпоративтік жүйесі (ZU Corporate IS)</h2>
+            <p class="muted">Жетісу университетіне арналған 5 қабатты, 6 модульді және орталықтандырылған Supabase PostgreSQL деректер қорына негізделген нақты корпоративтік платформа.</p>
+          </div>
+          <button type="button" id="refreshAllBtn" class="btn btn-outline btn-sm">Деректерді жаңарту</button>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Supabase Пайдаланушылар</span>
+            <strong id="kpiUsers" class="kpi-value">—</strong>
+            <small id="kpiUsersSplit" class="kpi-sub">Студент / Оқытушы</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Бөлімшелер / Курстар</span>
+            <strong id="kpiClasses" class="kpi-value">—</strong>
+            <small class="kpi-sub">public.classes кестесі</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Архитектуралық қабат</span>
+            <strong id="kpiLayers" class="kpi-value">5</strong>
+            <small class="kpi-sub">Көпқабатты (N-Tier) модель</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Функционалдық модуль</span>
+            <strong id="kpiModules" class="kpi-value">6</strong>
+            <small class="kpi-sub">Байланысқан модульдер</small>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel-card">
+            <h3>Практикалық жоба паспорты</h3>
+            <table class="data-table">
+              <tbody>
+                <tr><th>Таңдалған ұйым</th><td>Жетісу университеті (Университетті басқару жүйесі)</td></tr>
+                <tr><th>Жүйе мақсаты</th><td>Тіркелу, авторизация, оқу бөлімшелері, есеп беру және аудит процестерін бірыңғай цифрлық платформада басқару</td></tr>
+                <tr><th>Деректер қоры</th><td>Supabase PostgreSQL (<code>qucobxzzjzlukwgvluaa.supabase.co</code>)</td></tr>
+                <tr><th>Аутентификация</th><td>Қатаң Тіркелу → Кіру тәртібі, PBKDF2-HMAC-SHA256 (100 000 итерация) хэштеу және HMAC-SHA256 сессия токені</td></tr>
+                <tr><th>Бұлттық байланыс</th><td id="overviewHealthStatus">Тексерілуде...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel-card">
+            <h3>5-тапсырма талаптарының орындалуы</h3>
+            <ul class="checklist">
+              <li><strong>Кемінде 4 архитектуралық қабат:</strong> 5 толық қабат (Презентациялық, API Шлюз/Қауіпсіздік, Бизнес-логика, Деректерге қол жеткізу, Бұлттық ДҚ) іске асырылды.</li>
+              <li><strong>Кемінде 6 функционалдық модуль:</strong> Авторизация, Пайдаланушылар, Деректерді басқару, Есеп беру, Әкімшілік басқару, Қауіпсіздік модульдері жұмыс істейді.</li>
+              <li><strong>Бір ортақ деректер базасы:</strong> Барлық модульдер бірыңғай Supabase PostgreSQL базасына қосылған.</li>
+              <li><strong>Модульдер байланысы схемасы:</strong> Интерактивті графикалық схема «Байланыстар» бөлімінде берілген.</li>
+              <li><strong>Қатаң қолжетімділік:</strong> Тек алдымен тіркеліп, содан кейін кірген пайдаланушылар ғана жүйені аша алады.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: ARCHITECTURE LAYERS (Task 1) -->
+      <section id="tab-layers" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">1-тапсырма • Қабаттарды анықтау</span>
+            <h2>Корпоративтік жүйенің 5 архитектуралық қабаты</h2>
+            <p class="muted">Кез келген қабатты басып, оның технологиялық стегін, қызметін және негізгі компоненттерін көре аласыз.</p>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div id="layersStack" class="layers-stack"></div>
+          <div id="layerDetailCard" class="panel-card detail-sticky">
+            <h3>Қабат сипаттамасы</h3>
+            <p class="muted">Сол жақтағы қабаттардың бірін таңдаңыз.</p>
+          </div>
+        </div>
+
+        <div class="panel-card mt-16">
+          <h3>Қабаттардың құрылымдық кестесі</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Қабат атауы</th>
+                  <th>Негізгі қызметі</th>
+                  <th>Қолданылатын технологиялар</th>
+                </tr>
+              </thead>
+              <tbody id="layersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: FUNCTIONAL MODULES (Task 2) -->
+      <section id="tab-modules" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">2-тапсырма • Модульдерді бөлу</span>
+            <h2>Жүйенің 6 функционалдық модулі</h2>
+            <p class="muted">Әр модульдің нақты міндеті, өңдейтін деректері және басқа модульдермен өзара әрекеттесуі.</p>
+          </div>
+        </div>
+
+        <div id="modulesGrid" class="modules-grid"></div>
+
+        <div class="panel-card mt-16">
+          <h3>Функционалдық модульдер спецификациясы</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Модуль атауы</th>
+                  <th>Міндеті</th>
+                  <th>Қажетті деректер</th>
+                  <th>Өзара әрекеттесу</th>
+                </tr>
+              </thead>
+              <tbody id="modulesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: INTERACTIVE CONNECTION DIAGRAM (Task 3) -->
+      <section id="tab-diagram" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">3-тапсырма • Байланыстар схемасы</span>
+            <h2>Модульдер арасындағы байланыстар және деректер базасы схемасы</h2>
+            <p class="muted">Схемадағы кез келген модульді немесе деректер базасын басыңыз — ақпарат алмасу бағыты мен хаттамасы бөлектенеді.</p>
+          </div>
+        </div>
+
+        <div class="panel-card diagram-card">
+          <div class="diagram-wrap">
+            <svg id="archSvg" viewBox="0 0 980 540" role="img" aria-label="Модульдер арасындағы байланыстар схемасы">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#1d4ed8"></path>
+                </marker>
+                <marker id="arrowDark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#0f766e"></path>
+                </marker>
+              </defs>
+
+              <!-- Top User & Presentation -->
+              <g class="svg-node" data-node="client">
+                <rect x="355" y="16" width="270" height="54" rx="10" fill="#0f172a" stroke="#1e293b" stroke-width="2" />
+                <text x="490" y="40" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="700">Пайдаланушы (Студент / Оқытушы)</text>
+                <text x="490" y="58" text-anchor="middle" fill="#cbd5e1" font-size="11">Веб-браузер • Презентациялық қабат</text>
+              </g>
+
+              <!-- Gateway -->
+              <g class="svg-node" data-node="gateway">
+                <rect x="275" y="102" width="430" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" />
+                <text x="490" y="125" text-anchor="middle" fill="#1e3a8a" font-size="13.5" font-weight="700">Қауіпсіздік шлюзі және Сессия / RBAC Сүзгісі</text>
+                <text x="490" y="143" text-anchor="middle" fill="#3b82f6" font-size="11">Алдымен тіркелу → HMAC-SHA256 токенін тексеру → Аудит</text>
+              </g>
+
+              <!-- Arrows Client <-> Gateway -->
+              <line x1="490" y1="70" x2="490" y2="100" stroke="#1d4ed8" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)" />
+              <text x="502" y="90" fill="#1e40af" font-size="11" font-weight="600">HTTPS / TLS 1.3</text>
+
+              <!-- 6 Modules Row -->
+              <g class="svg-node" data-node="auth">
+                <rect x="24" y="205" width="142" height="106" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.8" />
+                <text x="95" y="232" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700">1. Авторизация</text>
+                <text x="95" y="252" text-anchor="middle" fill="#475569" font-size="11">Тіркелу / Кіру</text>
+                <text x="95" y="270" text-anchor="middle" fill="#475569" font-size="11">PBKDF2-SHA256</text>
+                <text x="95" y="294" text-anchor="middle" fill="#2563eb" font-size="10.5" font-weight="600">POST/GET /users</text>
+              </g>
+
+              <g class="svg-node" data-node="users">
+                <rect x="182" y="205" width="142" height="106" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.8" />
+                <text x="253" y="232" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700">2. Пайдаланушы</text>
+                <text x="253" y="252" text-anchor="middle" fill="#475569" font-size="11">Профиль &amp; Рөлдер</text>
+                <text x="253" y="270" text-anchor="middle" fill="#475569" font-size="11">Іздеу &amp; Жаңарту</text>
+                <text x="253" y="294" text-anchor="middle" fill="#2563eb" font-size="10.5" font-weight="600">GET/PATCH /users</text>
+              </g>
+
+              <g class="svg-node" data-node="data">
+                <rect x="340" y="205" width="142" height="106" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.8" />
+                <text x="411" y="232" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700">3. Деректер</text>
+                <text x="411" y="252" text-anchor="middle" fill="#475569" font-size="11">Бөлімше CRUD</text>
+                <text x="411" y="270" text-anchor="middle" fill="#475569" font-size="11">Код ZU-XXXX</text>
+                <text x="411" y="294" text-anchor="middle" fill="#2563eb" font-size="10.5" font-weight="600">/rest/v1/classes</text>
+              </g>
+
+              <g class="svg-node" data-node="reports">
+                <rect x="498" y="205" width="142" height="106" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.8" />
+                <text x="569" y="232" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700">4. Есеп беру</text>
+                <text x="569" y="252" text-anchor="middle" fill="#475569" font-size="11">Агрегация &amp; KPI</text>
+                <text x="569" y="270" text-anchor="middle" fill="#475569" font-size="11">CSV Экспорт</text>
+                <text x="569" y="294" text-anchor="middle" fill="#2563eb" font-size="10.5" font-weight="600">/rest/v1/* (KPI)</text>
+              </g>
+
+              <g class="svg-node" data-node="admin">
+                <rect x="656" y="205" width="142" height="106" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.8" />
+                <text x="727" y="232" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700">5. Әкімшілік</text>
+                <text x="727" y="252" text-anchor="middle" fill="#475569" font-size="11">Мониторинг</text>
+                <text x="727" y="270" text-anchor="middle" fill="#475569" font-size="11">RBAC Басқару</text>
+                <text x="727" y="294" text-anchor="middle" fill="#2563eb" font-size="10.5" font-weight="600">Health &amp; RBAC</text>
+              </g>
+
+              <g class="svg-node" data-node="security">
+                <rect x="814" y="205" width="142" height="106" rx="10" fill="#fff7ed" stroke="#c2410c" stroke-width="1.8" />
+                <text x="885" y="232" text-anchor="middle" fill="#7c2d12" font-size="13" font-weight="700">6. Қауіпсіздік</text>
+                <text x="885" y="252" text-anchor="middle" fill="#9a3412" font-size="11">HMAC-SHA256</text>
+                <text x="885" y="270" text-anchor="middle" fill="#9a3412" font-size="11">Аудит журналы</text>
+                <text x="885" y="294" text-anchor="middle" fill="#c2410c" font-size="10.5" font-weight="600">Audit &amp; WebCrypto</text>
+              </g>
+
+              <!-- Gateway to Modules distribution bus -->
+              <line x1="490" y1="154" x2="490" y2="178" stroke="#1d4ed8" stroke-width="2" />
+              <line x1="95" y1="178" x2="885" y2="178" stroke="#1d4ed8" stroke-width="2" />
+              <line x1="95" y1="178" x2="95" y2="203" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow)" />
+              <line x1="253" y1="178" x2="253" y2="203" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow)" />
+              <line x1="411" y1="178" x2="411" y2="203" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow)" />
+              <line x1="569" y1="178" x2="569" y2="203" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow)" />
+              <line x1="727" y1="178" x2="727" y2="203" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow)" />
+              <line x1="885" y1="178" x2="885" y2="203" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow)" />
+
+              <!-- Inter-module horizontal connectors -->
+              <line x1="166" y1="258" x2="180" y2="258" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrowDark)" />
+              <line x1="324" y1="258" x2="338" y2="258" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrowDark)" />
+              <line x1="482" y1="258" x2="496" y2="258" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrowDark)" />
+              <line x1="640" y1="258" x2="654" y2="258" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrowDark)" />
+              <line x1="798" y1="258" x2="812" y2="258" stroke="#0f766e" stroke-width="1.8" marker-end="url(#arrowDark)" />
+
+              <!-- DAL Bus to Supabase DB -->
+              <line x1="95" y1="311" x2="95" y2="365" stroke="#0f766e" stroke-width="1.8" />
+              <line x1="253" y1="311" x2="253" y2="365" stroke="#0f766e" stroke-width="1.8" />
+              <line x1="411" y1="311" x2="411" y2="365" stroke="#0f766e" stroke-width="1.8" />
+              <line x1="569" y1="311" x2="569" y2="365" stroke="#0f766e" stroke-width="1.8" />
+              <line x1="727" y1="311" x2="727" y2="365" stroke="#0f766e" stroke-width="1.8" />
+              <line x1="885" y1="311" x2="885" y2="365" stroke="#0f766e" stroke-width="1.8" />
+              <line x1="95" y1="365" x2="885" y2="365" stroke="#0f766e" stroke-width="2" />
+              <line x1="490" y1="365" x2="490" y2="404" stroke="#0f766e" stroke-width="2.4" marker-end="url(#arrowDark)" marker-start="url(#arrowDark)" />
+              <rect x="325" y="348" width="330" height="22" rx="6" fill="#ecfdf5" stroke="#10b981" />
+              <text x="490" y="363" text-anchor="middle" fill="#065f46" font-size="11" font-weight="700">Деректерге қол жеткізу қабаты: PostgREST HTTPS API</text>
+
+              <!-- Supabase Database Node -->
+              <g class="svg-node" data-node="db">
+                <rect x="190" y="408" width="600" height="114" rx="14" fill="#064e3b" stroke="#10b981" stroke-width="2.2" />
+                <text x="490" y="436" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="700">ОРТАЛЫҚ БҰЛТТЫҚ ДЕРЕКТЕР БАЗАСЫ — SUPABASE POSTGRESQL</text>
+                <text x="490" y="456" text-anchor="middle" fill="#a7f3d0" font-size="11.5">Хост: qucobxzzjzlukwgvluaa.supabase.co (Аймақ: Cloud PostgreSQL 15+)</text>
+                <rect x="215" y="472" width="125" height="34" rx="6" fill="#065f46" stroke="#34d399" />
+                <text x="277" y="493" text-anchor="middle" fill="#ffffff" font-size="11.5" font-weight="600">public.users</text>
+                <rect x="355" y="472" width="125" height="34" rx="6" fill="#065f46" stroke="#34d399" />
+                <text x="417" y="493" text-anchor="middle" fill="#ffffff" font-size="11.5" font-weight="600">public.classes</text>
+                <rect x="495" y="472" width="135" height="34" rx="6" fill="#065f46" stroke="#34d399" />
+                <text x="562" y="493" text-anchor="middle" fill="#ffffff" font-size="11.5" font-weight="600">public.assignments</text>
+                <rect x="645" y="472" width="125" height="34" rx="6" fill="#065f46" stroke="#34d399" />
+                <text x="707" y="493" text-anchor="middle" fill="#ffffff" font-size="11.5" font-weight="600">public.submissions</text>
+              </g>
+            </svg>
+          </div>
+          <div id="diagramInspector" class="diagram-inspector">
+            <strong>Түйін сипаттамасы:</strong> Диаграммадағы кез келген компонентті басып, нақты ақпарат ағынын көріңіз.
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: LIVE SUPABASE WORKSPACE (Modules 2 & 3) -->
+      <section id="tab-workspace" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">2 және 3-модульдер • Тікелей Supabase CRUD</span>
+            <h2>Пайдаланушылар және Корпоративтік бөлімшелерді басқару</h2>
+            <p class="muted">Бұл бөлімдегі барлық әрекеттер нақты уақытта Supabase Cloud PostgreSQL кестелерінде орындалады.</p>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <!-- Profile Update -->
+          <div class="panel-card">
+            <h3>Менің профилімді жаңарту (public.users)</h3>
+            <div id="profileNotice" class="alert hidden"></div>
+            <form id="profileForm" class="stack-form">
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="profFirstName">Аты</label>
+                  <input id="profFirstName" type="text" required minlength="2" />
+                </div>
+                <div class="field">
+                  <label for="profLastName">Тегі</label>
+                  <input id="profLastName" type="text" required minlength="2" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="profGroup">Тобы / Кафедра</label>
+                <input id="profGroup" type="text" placeholder="ИС-302" />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Профильді сақтау</button>
+            </form>
+          </div>
+
+          <!-- Create Corporate Record -->
+          <div class="panel-card">
+            <h3>Жаңа бөлімше / курс қосу (public.classes)</h3>
+            <div id="recordNotice" class="alert hidden"></div>
+            <form id="createRecordForm" class="stack-form">
+              <div class="field">
+                <label for="recordName">Бөлімше немесе пән атауы</label>
+                <input id="recordName" type="text" required minlength="2" placeholder="Мысалы: АЖЖ — Лаб 13 Корпоративтік жүйе" />
+              </div>
+              <div class="field">
+                <label for="recordCode">Ішкі коды (міндетті емес, бос болса авто-генерация)</label>
+                <input id="recordCode" type="text" maxlength="16" placeholder="ZU-2026" />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Supabase базасына қосу</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Users Directory -->
+        <div class="panel-card mt-16">
+          <div class="card-toolbar">
+            <h3>Тіркелген пайдаланушылар тізімі (Модуль 2)</h3>
+            <div class="toolbar-controls">
+              <input id="userSearchInput" type="search" placeholder="Аты, логині немесе тобы бойынша іздеу..." />
+              <select id="userRoleFilter">
+                <option value="all">Барлық рөлдер</option>
+                <option value="student">Тек студенттер</option>
+                <option value="teacher">Тек оқытушылар</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Аты-жөні</th>
+                  <th>Логин</th>
+                  <th>Рөлі</th>
+                  <th>Тобы / Бөлімі</th>
+                  <th>Тіркелген уақыты</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Corporate Units / Classes Table -->
+        <div class="panel-card mt-16">
+          <div class="card-toolbar">
+            <h3>Корпоративтік бөлімшелер мен курстар (Модуль 3)</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Коды</th>
+                  <th>Атауы</th>
+                  <th>Жауапты иесі</th>
+                  <th>Қатысушылар</th>
+                  <th>Әрекет</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: REPORTS, ADMIN & SECURITY (Modules 4, 5, 6) -->
+      <section id="tab-analytics" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">4, 5, 6-модульдер • Аналитика және Қауіпсіздік</span>
+            <h2>Есеп беру, Әкімшілік бақылау және Аудит журналы</h2>
+            <p class="muted">Supabase базасының нақты статистикасы, RBAC рөлдік матрицасы және криптографиялық қауіпсіздік мониторингі.</p>
+          </div>
+          <div class="btn-group">
+            <button type="button" id="exportCsvBtn" class="btn btn-outline btn-sm">CSV экспорттау</button>
+            <button type="button" id="printReportBtn" class="btn btn-primary btn-sm">Есепті басып шығару</button>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel-card">
+            <h3>Есеп беру модулі: Деректер базасының көрсеткіштері</h3>
+            <div id="reportsBars" class="bars-list"></div>
+            <h4 class="subhead">Тіркелушілер рөлдер және топтар бойынша</h4>
+            <div id="groupsSummary" class="chips-wrap"></div>
+          </div>
+
+          <div class="panel-card">
+            <h3>Әкімшілік басқару және RBAC матрицасы</h3>
+            <div id="cryptoSummary" class="crypto-box"></div>
+            <div class="table-wrap mt-12">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Ресурс / API</th>
+                    <th>Қонақ</th>
+                    <th>Студент</th>
+                    <th>Оқытушы</th>
+                  </tr>
+                </thead>
+                <tbody id="rbacTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card mt-16">
+          <div class="card-toolbar">
+            <h3>Қауіпсіздік модулі: Нақты уақыттағы аудит журналы</h3>
+            <button type="button" id="refreshSecurityBtn" class="btn btn-outline btn-sm">Журналды жаңарту</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Уақыты (Алматы)</th>
+                  <th>Оқиға</th>
+                  <th>Логин</th>
+                  <th>Рөлі</th>
+                  <th>Күйі</th>
+                  <th>Сипаттама</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: ANALYTICAL QUESTIONS (Task 4) -->
+      <section id="tab-analysis" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">4-тапсырма • Архитектураны талдау</span>
+            <h2>Теориялық және практикалық талдау сұрақтарына жауаптар</h2>
+          </div>
+        </div>
+
+        <div class="qa-grid">
+          <article class="panel-card">
+            <h3>1. Корпоративтік жүйе архитектурасы дегеніміз не?</h3>
+            <p>Корпоративтік жүйе архитектурасы — ұйымның негізгі бизнес-процестерін (оқу үдерісі, кадр, қаржы, есеп беру) автоматтандыратын ақпараттық жүйенің құрылымдық қаңқасы. Ол жүйенің қабаттарын, функционалдық модульдерін, деректер базасын, интеграциялық интерфейстерін (API) және қауіпсіздік ережелерін біртұтас модель ретінде сипаттайды.</p>
+          </article>
+
+          <article class="panel-card">
+            <h3>2. Көпқабатты архитектураның артықшылықтары қандай?</h3>
+            <p>Көпқабатты (N-Tier) архитектура презентация, шлюз, бизнес-логика және деректер қабаттарын бір-бірінен оқшаулайды. Бұл дизайнды өзгерткенде серверлік логикаға әсер етпеуге, әр қабатты тәуелсіз масштабтауға, қауіпсіздікті шлюз деңгейінде орталықтандыруға және тестілеуді жеңілдетуге мүмкіндік береді.</p>
+          </article>
+
+          <article class="panel-card">
+            <h3>3. Модульдік архитектура не үшін қажет?</h3>
+            <p>Модульдік архитектура үлкен жүйені дербес функционалдық бөліктерге (Авторизация, Пайдаланушылар, Деректер, Есеп беру, Әкімшілік, Қауіпсіздік) бөлу үшін қажет. Әр модульдің нақты жауапкершілік аймағы болғандықтан, командалар параллель жұмыс істей алады, ақаулар оқшауланады және жаңа функционалды оңай қосуға болады.</p>
+          </article>
+
+          <article class="panel-card">
+            <h3>4. Деректер базасы қандай қызмет атқарады?</h3>
+            <p>Орталықтандырылған деректер базасы (біздің жобада — Supabase PostgreSQL) барлық модульдер үшін бірыңғай шындық көзі (Single Source of Truth) рөлін атқарады. Ол деректердің тұтастығын, ACID транзакцияларын, бәсекелес сұраныстар кезіндегі келісімділікті және жылдам индекстелген іздеуді қамтамасыз етеді.</p>
+          </article>
+
+          <article class="panel-card full-span">
+            <h3>5. Жүйенің қауіпсіздігін қалай қамтамасыз етуге болады?</h3>
+            <p>Көпдеңгейлі қорғаныс (Defense-in-Depth) арқылы қамтамасыз етіледі: біріншіден, құпия сөздерді тұзбен (salt) PBKDF2-HMAC-SHA256 (100 000 итерация) алгоритмі арқылы хэштеп сақтау; екіншіден, қатаң «Тіркелу → Кіру» тәртібі мен HMAC-SHA256 сессия токенін қолдану; үшіншіден, барлық ішкі бөлімдерге тек сессиясы расталған пайдаланушыларды жіберу; төртіншіден, PostgREST параметрленген сұраныстары арқылы SQL-инъекцияны болдырмау және аудит журналын жүргізу.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
